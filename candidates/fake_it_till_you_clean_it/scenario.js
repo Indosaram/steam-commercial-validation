@@ -1,35 +1,17 @@
 /**
- * FAKE IT TILL YOU CLEAN IT - candidate scenario descriptor (Task 2).
+ * FAKE IT TILL YOU CLEAN IT - expanded candidate scenario descriptor.
  *
- * One set: the gold-coated pool and courtyard of an abandoned influencer
- * estate. The player is a cleanup contractor. The gold is a sprayed staging
- * coat applied for the camera; underneath it the pool shell is cracked and
- * rotten. Stripping the coat IS the core action, and the reveal is what the
- * coat was hiding.
+ * The player starts at the gold-coated pool courtyard, exposes the decay hidden
+ * under its camera-only finish, then follows the same staging pattern into a
+ * second room: the glamour vanity. Cleaning the vanity exposes a concealed safe
+ * seam; inspecting the safe reveals receipts that prove the luxury props were
+ * repeatedly rented for shoots rather than owned as part of a real renovation.
  *
  * Contract notes (core/scenario-contract.js + shell/shell.js):
- *  - Step kinds map to the shared required events:
- *      inspect -> inspect_performed      (E / interact)
- *      core_action -> core_action_completed (Space)
- *      reveal -> signature_reveal_seen   (Q / inspect verb)
- *      choice -> choice_committed        (F)
- *  - The shell fires the FIRST pending step of a requested kind, so declaration
- *    order is the play order within a kind. Prerequisites make that ordering
- *    enforced rather than merely conventional.
- *  - `requires` may only name EARLIER steps; a forward reference is rejected by
- *    validateDescriptor() as a soft-lock.
- *
- * Invalid-path design (the deliberate blocked requirement):
- *  - `disposition` (the evidence choice) requires `reveal`. Committing the
- *    evidence choice before the decayed surface is exposed is blocked by name:
- *    blockedSteps() reports missing ['reveal'].
- *  - `reveal` requires `strip_deck`, the last debris/cleaning step. Attempting
- *    to finish or reveal with debris remaining is blocked by name and the
- *    scenario cannot be completed: shell/shell.js `advance()` refuses to emit
- *    `scenario_completed` while any descriptor step is still incomplete.
- *
- * No real influencers, platforms, celebrities, brands, or trademark designs are
- * referenced. The estate, its owner, and every prop are fictional.
+ *  - Step kinds map to the shared required events.
+ *  - The shell fires the FIRST pending step of a requested kind.
+ *  - `requires` only names EARLIER steps so ordered prerequisites cannot soft-lock.
+ *  - Every authored state-changing beat includes explicit before/after proof.
  */
 
 /** Visible set states, in the order the player drives them. */
@@ -39,34 +21,47 @@ const SET = Object.freeze({
   water_drained: 'pool_drained_gold_coat_fully_exposed_dry',
   coat_stripped: 'pool_basin_gold_coat_stripped_to_bare_shell',
   deck_stripped: 'courtyard_deck_gold_coat_stripped_substrate_visible',
-  decay_exposed: 'pool_shell_cracked_water_stained_decayed_under_gold',
-  archived: 'evidence_object_dispositioned_set_documented',
+  decay_exposed: 'pool_decay_exposed_glamour_vanity_still_staged',
+  vanity_cleaned: 'pool_decay_exposed_glamour_vanity_cleaned_safe_seam_visible',
+  receipt_found: 'hidden_vanity_safe_open_recurring_prop_rental_receipts_exposed',
+  archived: 'staging_evidence_bundle_dispositioned_set_documented',
 });
 
 export default {
   concept_id: 'fake_it_till_you_clean_it',
 
   set: {
-    id: 'gold_pool_courtyard',
-    label: 'Gold-coated pool and courtyard, abandoned estate',
+    id: 'influencer_estate_cleanup_route',
+    label: 'Gold-coated pool courtyard and glamour vanity, abandoned estate',
     description:
-      'A single enclosed courtyard: one kidney-shaped pool sprayed gold to the '
-      + 'waterline, a gold-dusted deck, four toppled ring lights, and a stack of '
-      + 'unopened shipping crates used as set dressing. Nothing beyond this set '
-      + 'is reachable in this scenario.',
+      'A compact two-area cleanup route: the gold-coated pool courtyard opens '
+      + 'into a sealed glamour vanity room used for camera-ready beauty shoots. '
+      + 'No other estate rooms are reachable in this scenario.',
+    areas: [
+      {
+        id: 'gold_pool_courtyard',
+        label: 'Gold-coated pool courtyard',
+        role: 'opening_cleanup_area',
+      },
+      {
+        id: 'glamour_vanity',
+        label: 'Glamour vanity room',
+        role: 'second_room_escalation',
+      },
+    ],
     initial_state: SET.staged,
     final_state: SET.archived,
   },
 
   steps: [
-    // --- objective -------------------------------------------------------
     {
       id: 'inspect_objective',
       kind: 'inspect',
       label: 'Inspect the cleanup objective board',
       description:
         'Read the work order pinned at the courtyard gate: strip the staging '
-        + 'coat from the pool and deck, and log anything the coat was covering.',
+        + 'coat, log what it concealed, then clear any connected room showing '
+        + 'the same camera-only treatment.',
       prompt: 'Press E to read the work order.',
       transformation: {
         before: 'objective_unknown_contractor_just_arrived',
@@ -74,16 +69,13 @@ export default {
       },
       duration_ms: 80_000,
     },
-
-    // --- debris ----------------------------------------------------------
     {
       id: 'collect_debris',
       kind: 'core_action',
       label: 'Collect debris from the deck and pool water',
       description:
         'Bag the toppled ring lights, drink cups, and gold-flecked leaf litter '
-        + 'floating in the pool. The set reads as "styled" until the loose '
-        + 'debris is gone; only then is the coated surface actually visible.',
+        + 'floating in the pool so the coated surface can be read clearly.',
       prompt: 'Press Space to collect debris.',
       requires: ['inspect_objective'],
       transformation: {
@@ -93,8 +85,6 @@ export default {
       debris_cleared: true,
       duration_ms: 110_000,
     },
-
-    // --- three ordered cleaning / restoration core actions ---------------
     {
       id: 'drain_pool',
       kind: 'core_action',
@@ -116,7 +106,7 @@ export default {
       kind: 'core_action',
       label: 'Strip the gold coat from the pool basin',
       description:
-        'Work the solvent wand across the basin. The gold lifts in sheets, '
+        'Work the solvent wand across the basin. The gold lifts in sheets '
         + 'because it was sprayed straight onto unprepared concrete.',
       prompt: 'Press Space to strip the basin coat.',
       requires: ['drain_pool'],
@@ -133,7 +123,7 @@ export default {
       label: 'Strip and wash the courtyard deck',
       description:
         'Take the same pass across the deck and rinse the residue to the drain. '
-        + 'With the last coated surface cleared, the set is fully readable.',
+        + 'With the last courtyard surface cleared, the set is fully readable.',
       prompt: 'Press Space to strip the deck.',
       requires: ['strip_basin'],
       transformation: {
@@ -144,18 +134,15 @@ export default {
       final_debris_step: true,
       duration_ms: 110_000,
     },
-
-    // --- signature reveal ------------------------------------------------
     {
       id: 'reveal_decayed_surface',
       kind: 'reveal',
       label: 'Signature reveal: the decayed surface under the gold',
       description:
-        'Stripped bare, the shell shows what the coat was for: a split running '
-        + 'the length of the basin, black water staining, and rebar showing '
-        + 'through. Taped inside the skimmer housing is a shot list - camera '
-        + 'marks, sun times, and the note "gold only where frame reaches". The '
-        + 'estate was never restored. It was dressed for one set of photos.',
+        'Stripped bare, the shell shows a split running the length of the basin, '
+        + 'black water staining, and exposed rebar. Taped inside the skimmer is '
+        + 'a shot list marked "gold only where frame reaches". A notation on the '
+        + 'same sheet flags the glamour vanity as the next staged camera zone.',
       prompt: 'Press Q to inspect the bare shell.',
       requires: ['strip_deck'],
       transformation: {
@@ -166,52 +153,91 @@ export default {
         id: 'skimmer_shot_list',
         label: 'Laminated shot list taped inside the skimmer housing',
         proves:
-          'the gold coat was applied only inside camera framing, so the '
-          + 'restoration was staged for images rather than performed',
+          'the gold coat was applied only inside camera framing and the same '
+          + 'staging plan continued into the glamour vanity',
       },
       duration_ms: 80_000,
     },
-
-    // --- evidence disposition (gated on the reveal) ----------------------
+    {
+      id: 'restore_glamour_vanity',
+      kind: 'core_action',
+      area_id: 'glamour_vanity',
+      label: 'Clean the glamour vanity and expose the concealed safe seam',
+      description:
+        'Clear adhesive gems, powder residue, and metallic spray from the mirror '
+        + 'surround and vanity top. As the staged finish comes away, a rectangular '
+        + 'seam and recessed latch appear behind the mirror backing.',
+      prompt: 'Press Space to restore the glamour vanity.',
+      requires: ['reveal_decayed_surface'],
+      transformation: {
+        before: SET.decay_exposed,
+        after: SET.vanity_cleaned,
+      },
+      cleaning_pass: 4,
+      duration_ms: 55_000,
+    },
+    {
+      id: 'safe_receipt_clue',
+      kind: 'inspect',
+      area_id: 'glamour_vanity',
+      label: 'Discover the hidden safe receipts',
+      description:
+        'Open the newly exposed latch and inspect a bundle of recurring prop-rental '
+        + 'receipts. Luxury jewelry, designer-style display pieces, and gold staging '
+        + 'materials were rented for 48-hour shoots, returned, then rented again for '
+        + 'later posts. The apparent permanent luxury inventory never existed.',
+      prompt: 'Press E to inspect the hidden safe.',
+      requires: ['restore_glamour_vanity'],
+      transformation: {
+        before: SET.vanity_cleaned,
+        after: SET.receipt_found,
+      },
+      evidence_clue: {
+        id: 'safe_receipt_clue',
+        label: 'Recurring prop-rental receipts from the concealed vanity safe',
+        proves:
+          'the estate repeatedly rented camera-facing luxury props instead of '
+          + 'owning the inventory presented as permanent wealth',
+      },
+      duration_ms: 50_000,
+    },
     {
       id: 'disposition',
       kind: 'choice',
-      label: 'Decide the fate of the shot list: preserve, discard, or archive',
+      label: 'Decide the fate of the staging evidence: preserve, discard, or archive',
       description:
-        'The shot list is the only physical proof the restoration was staged. '
-        + 'Preserve it in place for the property record, discard it with the '
-        + 'stripping waste, or archive it into the contractor evidence log.',
+        'The skimmer shot list and safe receipts now form one evidence bundle. '
+        + 'Preserve it with the property, discard it with the stripping waste, '
+        + 'or archive it into the contractor evidence log.',
       prompt: 'Press F to commit the disposition.',
-      // The named gate: no disposition before the reveal exposes the clue.
-      requires: ['reveal_decayed_surface'],
-      evidence_object: 'skimmer_shot_list',
+      requires: ['safe_receipt_clue'],
+      evidence_object: 'staging_evidence_bundle',
       options: [
         {
           id: 'preserve',
           label: 'Preserve in place',
-          consequence: 'The clue stays with the property and transfers to the next owner.',
+          consequence: 'The evidence stays with the property and transfers to the next owner.',
         },
         {
           id: 'discard',
           label: 'Discard with the stripping waste',
-          consequence: 'The staging is erased along with the coat; only your word remains.',
+          consequence: 'The staging record is erased; only your account remains.',
         },
         {
           id: 'archive',
           label: 'Archive to the contractor evidence log',
-          consequence: 'The clue leaves the estate and enters the record you control.',
+          consequence: 'The evidence leaves the estate and enters the record you control.',
         },
       ],
       default_option: 'archive',
       transformation: {
-        before: SET.decay_exposed,
+        before: SET.receipt_found,
         after: SET.archived,
       },
       duration_ms: 90_000,
     },
   ],
 
-  /** Deterministic replay ordering used by the replay/smoke driver. */
   replay: [
     'inspect_objective',
     'collect_debris',
@@ -219,51 +245,72 @@ export default {
     'strip_basin',
     'strip_deck',
     'reveal_decayed_surface',
+    'restore_glamour_vanity',
+    'safe_receipt_clue',
     'disposition',
   ],
 
-  /**
-   * The named blocked requirements this candidate must demonstrate. Each entry
-   * is an intentionally invalid path; `missing` is what blockedSteps() reports.
-   */
   invalid_paths: [
     {
-      id: 'disposition_before_reveal',
+      id: 'disposition_before_safe_receipt',
       attempt: 'disposition',
-      completed: ['inspect_objective', 'collect_debris', 'drain_pool', 'strip_basin', 'strip_deck'],
-      expect_missing: ['reveal_decayed_surface'],
-      requirement: 'expose_decayed_surface_before_dispositioning_evidence',
+      completed: [
+        'inspect_objective',
+        'collect_debris',
+        'drain_pool',
+        'strip_basin',
+        'strip_deck',
+        'reveal_decayed_surface',
+        'restore_glamour_vanity',
+      ],
+      expect_missing: ['safe_receipt_clue'],
+      requirement: 'discover_safe_receipt_before_dispositioning_evidence',
       message:
-        'Blocked: the shot list cannot be preserved, discarded, or archived '
-        + 'before the bare shell is inspected and the staging is exposed.',
+        'Blocked: the evidence bundle cannot be dispositioned before the concealed '
+        + 'safe is inspected and its rental receipts are logged.',
+    },
+    {
+      id: 'safe_receipt_before_vanity_cleanup',
+      attempt: 'safe_receipt_clue',
+      completed: [
+        'inspect_objective',
+        'collect_debris',
+        'drain_pool',
+        'strip_basin',
+        'strip_deck',
+        'reveal_decayed_surface',
+      ],
+      expect_missing: ['restore_glamour_vanity'],
+      requirement: 'clean_glamour_vanity_before_opening_hidden_safe',
+      message:
+        'Blocked: the safe seam and latch are still concealed beneath the staged '
+        + 'vanity finish, so the receipt clue cannot be inspected yet.',
     },
     {
       id: 'exit_with_debris_remaining',
       attempt: 'reveal_decayed_surface',
       completed: ['inspect_objective'],
       expect_missing: ['strip_deck'],
-      requirement: 'clear_debris_and_complete_all_cleaning_passes_before_exit',
+      requirement: 'clear_debris_and_complete_all_courtyard_cleaning_before_reveal',
       message:
-        'Blocked: debris and coated surfaces remain. The scenario cannot be '
-        + 'completed while any cleaning pass is outstanding.',
+        'Blocked: debris and coated courtyard surfaces remain. The reveal cannot '
+        + 'occur while the cleaning chain is outstanding.',
     },
   ],
 
-  /** Before/after proof the capture evidence must show. */
   visible_proof: {
     before: SET.staged,
-    after: SET.decay_exposed,
+    after: SET.receipt_found,
     assertion:
-      'the gold-coated surface and the stripped, decayed surface are visibly '
-      + 'different states of the same pool',
+      'the camera-ready gold courtyard and vanity become visibly stripped, '
+      + 'damaged spaces with a concealed evidence cache exposed',
   },
 
-  /** Shown after completion; no second room is built in this scenario. */
   next_hook: {
-    id: 'second_room_flagged',
-    label: 'A second estate room is flagged with the same staging pattern',
+    id: 'third_zone_flagged',
+    label: 'A third estate camera zone is flagged for the next contract',
     detail:
-      'The work order updates: the guest wing shows the same gold spray inside '
-      + 'one camera arc. Not reachable in this scenario.',
+      'One receipt references a sealed wardrobe studio booked under the same '
+      + '48-hour staging account. It is not reachable in this scenario.',
   },
 };
