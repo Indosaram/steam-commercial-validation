@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test tests/*.test.js",
+    "test": "node --test tests/*.test.js tests/candidates/*.test.js",
     "smoke": "node tools/smoke-driver.js",
     "launch": "node tools/launch.js",
     "validate": "node tools/validate-export.js"
