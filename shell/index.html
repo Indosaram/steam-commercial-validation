@@ -2,57 +2,77 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>FAKE IT TILL YOU CLEAN IT - Playable 2D Canvas MVP</title>
+    <title>STEAM CONCEPT VALIDATION - 2D Visual Playable MVP</title>
     <link rel="stylesheet" href="./shell.css" />
   </head>
   <body>
     <header id="hud-header">
       <div class="brand">
-        <span class="badge">CLEANUP CONTRACTOR</span>
-        <h1 id="concept-title">FAKE IT TILL YOU CLEAN IT</h1>
+        <span class="badge" id="badge-title">SIMULATION MVP</span>
+        <h1 id="concept-title">Loading...</h1>
       </div>
       <div id="stats-panel">
         <div class="stat"><span class="label">PROGRESS:</span> <span id="progress-val" class="val">0%</span></div>
-        <div class="stat"><span class="label">ACTIVE TOOL:</span> <span id="tool-val" class="val">SOLVENT SPRAYER</span></div>
-        <div class="stat"><span class="label">SET STATE:</span> <span id="state-val" class="val">STAGED GOLD</span></div>
+        <div class="stat"><span class="label">STATUS:</span> <span id="state-val" class="val">READY</span></div>
+        <div class="stat"><span class="label">TIME:</span> <span id="time-val" class="val">00:00</span></div>
       </div>
     </header>
 
     <main id="game-container">
+      <!-- 2D Canvas Interactive Game Viewport -->
       <div id="canvas-wrapper">
         <canvas id="game-canvas" width="880" height="520"></canvas>
         <div id="canvas-overlay">
-          <div id="action-prompt" class="pulse-prompt">PRESS SPACE OR CLICK CANVAS TO CLEAN</div>
+          <div id="action-prompt" class="pulse-prompt">PRESS ENTER TO START MISSION</div>
         </div>
       </div>
 
+      <!-- Live Mission & Control Panel -->
       <aside id="sidebar">
-        <div class="card">
+        <div class="card mission-card">
           <h3>CURRENT OBJECTIVE</h3>
-          <p id="status">Loading scenario...</p>
+          <p id="status">Press Enter to begin the scenario.</p>
         </div>
+
         <div class="card">
           <h3>CONTROLS</h3>
           <ul class="key-list">
-            <li><kbd>Space</kbd> / <kbd>Mouse Drag</kbd> : Strip & Scrape Gold Coating</li>
-            <li><kbd>E</kbd> : Inspect Objective / Secret Safe</li>
-            <li><kbd>Q</kbd> : Signature Reveal (Expose Decayed Substrate)</li>
-            <li><kbd>F</kbd> : Commit Evidence Disposition</li>
+            <li><kbd>Enter</kbd> : Start Session / Advance</li>
+            <li><kbd>Space</kbd> / <kbd>Click</kbd> : Core Action (Clean / Sort / Repair / Restore / Inspect)</li>
+            <li><kbd>E</kbd> : Inspect Object / Read Diagnostic</li>
+            <li><kbd>Q</kbd> : Signature Reveal (Uncover Truth)</li>
+            <li><kbd>F</kbd> : Commit Meaningful Choice</li>
             <li><kbd>R</kbd> : Reset Scenario Profile</li>
           </ul>
         </div>
+
         <div class="card">
-          <h3>DISCOVERED EVIDENCE</h3>
-          <ul id="evidence-list">
-            <li class="empty-clue">No evidence collected yet.</li>
+          <h3>MISSION EVENT LOG</h3>
+          <ul id="log-list">
+            <li class="log-item">System ready. Awaiting launch.</li>
           </ul>
+        </div>
+
+        <div class="card button-card">
+          <button id="reset-btn" class="btn secondary">RESET PROFILE (R)</button>
+          <button id="export-btn" class="btn primary">EXPORT SESSION JSON</button>
         </div>
       </aside>
     </main>
 
+    <!-- Hidden elements for test driver compatibility -->
     <div style="display:none;">
       <span id="build-id"></span>
-      <span id="session-id"></span>
+      <span id="concept-role"></span>
+      <span id="concept-core-action"></span>
+      <span id="concept-reveal"></span>
+      <span id="concept-choice"></span>
+      <span id="concept-hook"></span>
+      <span id="concept-target"></span>
+      <span id="shell-hint"></span>
+      <div id="beats"></div>
+      <div id="controls"></div>
+      <div id="log"></div>
     </div>
 
     <script type="module" src="./shell.js"></script>

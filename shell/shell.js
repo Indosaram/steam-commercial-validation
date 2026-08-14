@@ -462,4 +462,14 @@ async function boot() {
   };
 }
 
+
+  // Initialize Visual Canvas Renderer
+  const canvas = document.getElementById('game-canvas');
+  if (canvas) {
+    initCanvasRenderer(canvas, () => state, (verb) => {
+      if (!state.startedAt) advance();
+      else if (verb === 'core_action') coreAction();
+    });
+  }
+
 boot();
