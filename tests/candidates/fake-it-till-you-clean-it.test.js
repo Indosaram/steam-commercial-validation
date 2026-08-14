@@ -25,18 +25,16 @@ test('descriptor models the courtyard plus glamour vanity expansion with ordered
   assert.equal(debris.debris_cleared, true);
 
   const cleaning = rest.filter((step) => Number.isInteger(step.cleaning_pass));
-  assert.deepEqual(cleaning.map((step) => step.cleaning_pass), [1, 2, 3, 4]);
+  assert.deepEqual(cleaning.map((step) => step.cleaning_pass), [1, 2, 3]);
   assert.deepEqual(cleaning.map((step) => step.id), [
     'drain_pool',
     'strip_basin',
     'strip_deck',
-    'restore_glamour_vanity',
   ]);
   assert.deepEqual(cleaning.map((step) => step.requires), [
     ['collect_debris'],
     ['drain_pool'],
     ['strip_basin'],
-    ['reveal_decayed_surface'],
   ]);
 
   const reveal = descriptor.steps.find((step) => step.kind === 'reveal');
@@ -49,6 +47,8 @@ test('descriptor models the courtyard plus glamour vanity expansion with ordered
   assert.equal(vanity.kind, 'core_action');
   assert.equal(vanity.area_id, 'glamour_vanity');
   assert.deepEqual(vanity.requires, ['reveal_decayed_surface']);
+  assert.equal(vanity.cleaning_pass, undefined);
+  assert.equal(vanity.restoration_extension, 1);
   assert.notEqual(vanity.transformation.before, vanity.transformation.after);
   assert.match(vanity.description, /safe seam|latch/i);
 

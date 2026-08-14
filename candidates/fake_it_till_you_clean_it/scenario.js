@@ -173,7 +173,7 @@ export default {
         before: SET.decay_exposed,
         after: SET.vanity_cleaned,
       },
-      cleaning_pass: 4,
+      restoration_extension: 1,
       duration_ms: 55_000,
     },
     {
