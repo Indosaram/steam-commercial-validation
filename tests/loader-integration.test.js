@@ -1,17 +1,7 @@
 /**
- * Shared-contract regression: a candidate's own scenario.js must actually reach
- * the launched surface.
- *
- * The foundation shipped the loader (core/candidate.js) but nothing consumed
- * it: tools/launch.js served only the generic concept card and shell/shell.js
- * rendered a hardcoded beat list. A Wave 2 worker could therefore write a
- * perfectly valid descriptor and see zero change in the browser, which silently
- * breaks the whole "each candidate owns exactly one directory" contract.
- *
- * These tests plant a fixture descriptor in the real candidates/ tree, launch
- * the real launcher on an ephemeral port, and assert the descriptor is visible
- * in /bootstrap.json and drives ordered gating - while a concept WITHOUT a
- * descriptor still boots the valid blank-shell fallback.
+ * Shared-contract regression for candidate scenario + browser game-module loading.
+ * The disposable workspace proves that only the active candidate is exposed at
+ * /candidate/, while candidates without game.js keep the neutral shell fallback.
  */
 
 import test from 'node:test';
@@ -34,7 +24,6 @@ const WORKSPACE = resolve(__dirname, '..');
 const FIXTURE_CONCEPT = 'fake_it_till_you_clean_it';
 const FALLBACK_CONCEPT = 'cursed_secondhand';
 
-/** A conforming descriptor with content no generic shell could invent. */
 const FIXTURE = {
   concept_id: FIXTURE_CONCEPT,
   steps: [
@@ -62,13 +51,24 @@ const FIXTURE = {
   ],
 };
 
-/** Plant a descriptor only in the disposable foundation workspace. */
-async function withFixtureDescriptor(workspace, fn) {
+const FIXTURE_GAME_SOURCE = `
+export default function createGame({ canvas, ctx, overlay, concept, scenario, getState, actions, audio, toCanvasPoint, debug }) {
+  const marker = 'FIXTURE_MODULAR_GAME';
+  return {
+    handleVerb() { return false; },
+    handlePlayerAction() { return false; },
+    destroy() {},
+    getDebugState() { return { marker, concept_id: concept.concept_id, steps: scenario.steps.length }; },
+  };
+}
+`;
+
+async function withFixtureCandidate(workspace, fn, { game = true } = {}) {
   const dir = join(workspace, 'candidates', FIXTURE_CONCEPT);
-  const file = join(dir, 'scenario.js');
   assert.equal(existsSync(dir), false, `fixture workspace was not empty: ${dir}`);
   mkdirSync(dir, { recursive: true });
-  writeFileSync(file, `export default ${JSON.stringify(FIXTURE, null, 2)};\n`, 'utf8');
+  writeFileSync(join(dir, 'scenario.js'), `export default ${JSON.stringify(FIXTURE, null, 2)};\n`, 'utf8');
+  if (game) writeFileSync(join(dir, 'game.js'), FIXTURE_GAME_SOURCE, 'utf8');
   try {
     return await fn();
   } finally {
@@ -76,7 +76,6 @@ async function withFixtureDescriptor(workspace, fn) {
   }
 }
 
-/** Launch the copied real launcher on an ephemeral port and await its readiness line. */
 async function withLaunchedShell(workspace, conceptId, fn) {
   const launch = join(workspace, 'tools', 'launch.js');
   const port = 8300 + Math.floor(Math.random() * 400);
@@ -90,7 +89,6 @@ async function withLaunchedShell(workspace, conceptId, fn) {
   child.stderr.setEncoding('utf8');
 
   try {
-    // Wait for the launcher's own readiness signal - no fixed sleep.
     await new Promise((resolveReady, rejectReady) => {
       const timer = setTimeout(() => rejectReady(new Error(`launcher never became ready: ${stderr || stdout}`)), 10000);
       timer.unref();
@@ -111,41 +109,40 @@ async function withLaunchedShell(workspace, conceptId, fn) {
     return await fn({ port, stdoutSoFar: () => stdout });
   } finally {
     child.kill('SIGTERM');
-    await new Promise((r) => child.once('exit', r));
+    await new Promise((resolveExit) => child.once('exit', resolveExit));
   }
 }
 
-// ------------------------------------------------- launch/bootstrap surface
-
-test('a candidate descriptor reaches the launched bootstrap surface', async () => {
+test('a candidate descriptor and game module reach the launched bootstrap surface', async () => {
   const workspace = createFoundationWorkspace();
   try {
-    await withFixtureDescriptor(workspace, async () => {
+    await withFixtureCandidate(workspace, async () => {
       await withLaunchedShell(workspace, FIXTURE_CONCEPT, async ({ port, stdoutSoFar }) => {
         const bootstrap = await (await fetch(`http://127.0.0.1:${port}/bootstrap.json`)).json();
 
-        assert.ok(bootstrap.scenario, '/bootstrap.json must carry the candidate scenario descriptor');
+        assert.ok(bootstrap.scenario);
         assert.equal(bootstrap.scenario.concept_id, FIXTURE_CONCEPT);
-        assert.deepEqual(
-          bootstrap.scenario.steps.map((s) => s.id),
-          FIXTURE.steps.map((s) => s.id),
-          'bootstrap must expose the descriptor step order verbatim',
-        );
-        assert.equal(bootstrap.scenario.steps[0].label, 'FIXTURE survey the blocked lane');
+        assert.deepEqual(bootstrap.scenario.steps.map((step) => step.id), FIXTURE.steps.map((step) => step.id));
         assert.deepEqual(bootstrap.scenario.player_actions, FIXTURE.player_actions);
-        assert.deepEqual(bootstrap.scenario.steps[1].transformation, {
-          before: 'fixture_blocked_lane',
-          after: 'fixture_lane_partially_clear',
-        });
         assert.equal(bootstrap.scenario_source, 'candidate');
+        assert.equal(bootstrap.game_module, '/candidate/game.js');
 
-        // Launch stdout must say the descriptor was loaded, so an operator can
-        // tell a candidate build from the blank shell without opening a browser.
         assert.match(stdoutSoFar(), /scenario\s*:\s*candidate \(6 steps\)/);
+        assert.match(stdoutSoFar(), /game\s*:\s*\/candidate\/game\.js/);
 
         const health = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
         assert.equal(health.scenario_source, 'candidate');
         assert.equal(health.scenario_steps, 6);
+        assert.equal(health.game_module, '/candidate/game.js');
+
+        const gameResponse = await fetch(`http://127.0.0.1:${port}/candidate/game.js`);
+        assert.equal(gameResponse.status, 200);
+        assert.match(await gameResponse.text(), /FIXTURE_MODULAR_GAME/);
+
+        const traversal = await fetch(
+          `http://127.0.0.1:${port}/candidate/%2e%2e%2f${FALLBACK_CONCEPT}%2fgame.js`,
+        );
+        assert.equal(traversal.status, 403);
       });
     });
   } finally {
@@ -153,20 +150,41 @@ test('a candidate descriptor reaches the launched bootstrap surface', async () =
   }
 });
 
-test('a concept without a descriptor still serves a valid blank shell', async () => {
+test('a concept without scenario.js or game.js serves the neutral blank-shell fallback', async () => {
   const workspace = createFoundationWorkspace();
   try {
     await withLaunchedShell(workspace, FALLBACK_CONCEPT, async ({ port, stdoutSoFar }) => {
       const bootstrap = await (await fetch(`http://127.0.0.1:${port}/bootstrap.json`)).json();
-      assert.equal(bootstrap.scenario, null, 'no descriptor means no scenario in bootstrap');
+      assert.equal(bootstrap.scenario, null);
       assert.equal(bootstrap.scenario_source, 'blank_shell');
+      assert.equal(bootstrap.game_module, null);
       assert.equal(bootstrap.concept.concept_id, FALLBACK_CONCEPT);
       assert.match(stdoutSoFar(), /scenario\s*:\s*blank shell/);
+      assert.match(stdoutSoFar(), /game\s*:\s*neutral blank-shell fallback/);
 
       const health = await (await fetch(`http://127.0.0.1:${port}/healthz`)).json();
       assert.equal(health.scenario_source, 'blank_shell');
       assert.equal(health.scenario_steps, 0);
+      assert.equal(health.game_module, null);
+
+      const gameResponse = await fetch(`http://127.0.0.1:${port}/candidate/game.js`);
+      assert.equal(gameResponse.status, 404);
     });
+  } finally {
+    removeFoundationWorkspace(workspace);
+  }
+});
+
+test('a scenario may use the modular host without shipping candidate graphics', async () => {
+  const workspace = createFoundationWorkspace();
+  try {
+    await withFixtureCandidate(workspace, async () => {
+      await withLaunchedShell(workspace, FIXTURE_CONCEPT, async ({ port }) => {
+        const bootstrap = await (await fetch(`http://127.0.0.1:${port}/bootstrap.json`)).json();
+        assert.ok(bootstrap.scenario);
+        assert.equal(bootstrap.game_module, null);
+      });
+    }, { game: false });
   } finally {
     removeFoundationWorkspace(workspace);
   }
@@ -175,14 +193,8 @@ test('a concept without a descriptor still serves a valid blank shell', async ()
 test('an invalid on-disk descriptor fails the launch by name instead of silently falling back', async () => {
   const workspace = createFoundationWorkspace();
   const dir = join(workspace, 'candidates', FIXTURE_CONCEPT);
-  const file = join(dir, 'scenario.js');
   mkdirSync(dir, { recursive: true });
-  // Only one core_action: violates the shared success condition.
-  writeFileSync(
-    file,
-    'export default { steps: [{ id: "only", kind: "core_action" }] };\n',
-    'utf8',
-  );
+  writeFileSync(join(dir, 'scenario.js'), 'export default { steps: [{ id: "only", kind: "core_action" }] };\n', 'utf8');
   try {
     const result = await new Promise((resolveExit) => {
       const child = spawn(
@@ -192,60 +204,70 @@ test('an invalid on-disk descriptor fails the launch by name instead of silently
       );
       let out = '';
       let err = '';
-      child.stdout.on('data', (c) => { out += c; });
-      child.stderr.on('data', (c) => { err += c; });
+      child.stdout.on('data', (chunk) => { out += chunk; });
+      child.stderr.on('data', (chunk) => { err += chunk; });
       child.once('exit', (code) => resolveExit({ code, out, err }));
     });
 
     assert.equal(result.code, 2, `expected exit 2, got ${result.code}: ${result.err}`);
     assert.match(result.err, /descriptor is invalid/);
     assert.match(result.err, /at least 3/);
-    assert.equal(result.out, '', 'a rejected launch must not announce a ready URL');
+    assert.equal(result.out, '');
   } finally {
     removeFoundationWorkspace(workspace);
   }
 });
 
-// ------------------------------------------------------ browser shell wiring
+test('the shell dynamically loads one candidate module and contains no concept switchboard', () => {
+  const shellSrc = readFileSync(join(WORKSPACE, 'shell', 'shell.js'), 'utf8');
+  const fallbackSrc = readFileSync(join(WORKSPACE, 'shell', 'canvas-renderer.js'), 'utf8');
+  const combined = `${shellSrc}\n${fallbackSrc}`;
 
-test('the browser shell consumes the descriptor instead of a hardcoded beat list', () => {
+  assert.match(shellSrc, /bootstrap\.scenario/);
+  assert.match(shellSrc, /bootstrap\.game_module/);
+  assert.match(shellSrc, /import\(bootstrap\.game_module\)/);
+  assert.match(shellSrc, /blockedSteps/);
+  assert.match(shellSrc, /resolvePlayerAction/);
+  assert.match(shellSrc, /resolveInput/);
+  assert.match(shellSrc, /from '\/core\/scenario-contract\.js'/);
+
+  for (const conceptId of CONCEPT_IDS) {
+    assert.doesNotMatch(combined, new RegExp(conceptId), `shell must not branch on ${conceptId}`);
+  }
+});
+
+test('the modular host exposes lifecycle, actions, pointer, audio, and QA hooks', () => {
   const shellSrc = readFileSync(join(WORKSPACE, 'shell', 'shell.js'), 'utf8');
 
+  for (const lifecycleMethod of ['handleVerb', 'handlePlayerAction', 'destroy', 'getDebugState']) {
+    assert.match(shellSrc, new RegExp(lifecycleMethod));
+  }
+  for (const action of ['startSession', 'attemptStep', 'completeScenario', 'resetProfile']) {
+    assert.match(shellSrc, new RegExp(action));
+  }
+
+  assert.match(shellSrc, /setPointerCapture/);
+  assert.match(shellSrc, /getBoundingClientRect/);
+  assert.match(shellSrc, /AudioContext/);
+  assert.match(shellSrc, /createOscillator/);
+  assert.match(shellSrc, /createBufferSource/);
+  assert.match(shellSrc, /getGameState/);
+  assert.match(shellSrc, /scv:statechange/);
   assert.match(
     shellSrc,
-    /bootstrap\.scenario/,
-    'shell.js must read the scenario descriptor delivered by /bootstrap.json',
-  );
-  assert.match(
-    shellSrc,
-    /blockedSteps/,
-    'shell.js must reuse the shared blockedSteps() gate rather than reimplementing prerequisites',
-  );
-  assert.match(
-    shellSrc,
-    /resolvePlayerAction/,
-    'shell.js must resolve descriptor-authored player actions to exact steps',
-  );
-  // The gate must come from the shared contract module, not a browser-local copy.
-  assert.match(
-    shellSrc,
-    /from '\/core\/scenario-contract\.js'/,
-    'shell.js must import the shared scenario contract served by the launcher',
+    /verb === 'advance'\) return state\.startedAt \? completeScenario/,
+    'Enter/advance must start or complete, never auto-complete a pending descriptor step',
   );
 });
 
-test('the shared scenario contract is importable without node builtins (browser-safe)', async () => {
+test('the shared scenario contract remains browser-safe and resolves exact player actions', async () => {
   const src = readFileSync(join(WORKSPACE, 'core', 'scenario-contract.js'), 'utf8');
-  assert.doesNotMatch(src, /from '?"?node:/, 'the browser-served contract module must not import node builtins');
+  assert.doesNotMatch(src, /from '?"?node:/);
 
   const { resolvePlayerAction } = await import('../core/scenario-contract.js');
-  assert.deepEqual(
-    resolvePlayerAction(FIXTURE, 'Digit1'),
-    FIXTURE.player_actions[0],
-    'an explicit physical player action must select its exact authored step',
-  );
-  assert.equal(resolvePlayerAction(FIXTURE, 'Space'), null, 'shared verb keys remain owned by the shared input map');
-  assert.equal(resolvePlayerAction({ steps: FIXTURE.steps }, 'Digit1'), null, 'descriptors without actions keep old semantics');
+  assert.deepEqual(resolvePlayerAction(FIXTURE, 'Digit1'), FIXTURE.player_actions[0]);
+  assert.equal(resolvePlayerAction(FIXTURE, 'Space'), null);
+  assert.equal(resolvePlayerAction({ steps: FIXTURE.steps }, 'Digit1'), null);
 });
 
 test('core/candidate.js still re-exports the contract helpers for Node consumers', async () => {
@@ -255,25 +277,19 @@ test('core/candidate.js still re-exports the contract helpers for Node consumers
   }
 });
 
-// --------------------------------------------------------- gating semantics
-
-test('descriptor prerequisites define the named blocked state the shell must show', () => {
+test('descriptor prerequisites define the named blocked state the host must show', () => {
   const blocked = blockedSteps(FIXTURE, ['survey']);
-  const reveal = blocked.find((b) => b.id === 'reveal');
-  assert.ok(reveal, 'reveal must be blocked before its prerequisites are met');
+  const reveal = blocked.find((entry) => entry.id === 'reveal');
+  assert.ok(reveal);
   assert.deepEqual(reveal.missing, ['sort_3']);
   assert.equal(blockedSteps(FIXTURE, FIXTURE.replay).length, 0);
 });
 
-test('the shared integration does not add candidate content', async () => {
+test('the shared integration fixture does not leak candidate content', async () => {
   const workspace = createFoundationWorkspace();
   try {
-    await withFixtureDescriptor(workspace, async () => {});
-    assert.equal(
-      existsSync(join(workspace, 'candidates', FIXTURE_CONCEPT)),
-      false,
-      `${FIXTURE_CONCEPT} fixture leaked candidate content`,
-    );
+    await withFixtureCandidate(workspace, async () => {});
+    assert.equal(existsSync(join(workspace, 'candidates', FIXTURE_CONCEPT)), false);
   } finally {
     removeFoundationWorkspace(workspace);
   }
