@@ -1,0 +1,33 @@
+{
+  "build_id": "foundation-0.1.0",
+  "seed": 42,
+  "generated_at": "2026-08-14T01:47:55.740Z",
+  "concepts_run": 1,
+  "concepts_passed": 1,
+  "all_passed": true,
+  "results": [
+    {
+      "concept_id": "fake_it_till_you_clean_it",
+      "checks": {
+        "fresh_profile_created": true,
+        "telemetry_schema_valid": true,
+        "success_condition_met": true,
+        "profile_persisted": true,
+        "scorecard_valid": true,
+        "decision_record_built": true
+      },
+      "ok": true,
+      "errors": [],
+      "active_minutes": 10.83,
+      "success_detail": {
+        "completed_unassisted": true,
+        "core_action_repeated_3x": true,
+        "signature_reveal_triggered": true,
+        "meaningful_choice_made": true,
+        "next_scenario_hook_shown": true,
+        "within_target_window": true
+      },
+      "session_id": "065e7ffa-c77c-40de-83b3-ea65c34ceb49"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "decision_log_version": 1,
+    "concept_id": "fake_it_till_you_clean_it",
+    "build_id": "foundation-0.1.0+fake_it_till_you_clean_it.b7d4227678c6",
+    "session_id": "065e7ffa-c77c-40de-83b3-ea65c34ceb49",
+    "recorded_at": "2026-08-14T01:47:55.739Z",
+    "decision": "hold",
+    "rationale": "blank foundation shell verified; candidate content pending Tasks 2-6",
+    "known_limitations": [
+      "no candidate-specific content, art, or scenario logic",
+      "scripted play-through, not human input"
+    ],
+    "scorecard_ref": null
+  }
+]

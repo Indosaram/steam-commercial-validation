@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "required_fields": [
+    "schema_version",
+    "event",
+    "concept_id",
+    "build_id",
+    "session_id",
+    "sequence",
+    "t_ms"
+  ],
+  "required_events": [
+    "session_started",
+    "core_action_completed",
+    "signature_reveal_seen",
+    "choice_committed",
+    "scenario_completed",
+    "session_ended"
+  ],
+  "supported_events": [
+    "session_started",
+    "core_action_completed",
+    "signature_reveal_seen",
+    "choice_committed",
+    "scenario_completed",
+    "session_ended",
+    "profile_created",
+    "profile_reset",
+    "profile_recovered",
+    "inspect_performed",
+    "invalid_action_blocked",
+    "next_hook_shown"
+  ],
+  "concept_ids": [
+    "fake_it_till_you_clean_it",
+    "return_to_sender",
+    "theme_park_liquidation",
+    "cursed_secondhand",
+    "panic_at_the_pawnshop"
+  ],
+  "session_id_format": "uuid-v4-shaped, hex with dashes",
+  "ordering_rules": [
+    "sequence strictly increases within a session",
+    "t_ms never decreases within a session",
+    "first occurrences of the six required events follow their listed causal order",
+    "stream opens with session_started and closes with session_ended"
+  ]
+}

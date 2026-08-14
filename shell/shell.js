@@ -1,3 +1,4 @@
+import { initCanvasRenderer } from './canvas-renderer.js';
 /**
  * Browser-side blank candidate shell.
  *

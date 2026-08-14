@@ -1,61 +1,60 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Concept Validation Shell</title>
-    <link rel="stylesheet" href="/shell.css" />
+    <title>FAKE IT TILL YOU CLEAN IT - Playable 2D Canvas MVP</title>
+    <link rel="stylesheet" href="./shell.css" />
   </head>
   <body>
-    <header class="bar">
-      <div class="bar-left">
-        <span class="tag">INTERNAL VALIDATION BUILD - NOT A PUBLIC DEMO</span>
+    <header id="hud-header">
+      <div class="brand">
+        <span class="badge">CLEANUP CONTRACTOR</span>
+        <h1 id="concept-title">FAKE IT TILL YOU CLEAN IT</h1>
       </div>
-      <div class="bar-right">
-        <span id="build-id" class="mono"></span>
+      <div id="stats-panel">
+        <div class="stat"><span class="label">PROGRESS:</span> <span id="progress-val" class="val">0%</span></div>
+        <div class="stat"><span class="label">ACTIVE TOOL:</span> <span id="tool-val" class="val">SOLVENT SPRAYER</span></div>
+        <div class="stat"><span class="label">SET STATE:</span> <span id="state-val" class="val">STAGED GOLD</span></div>
       </div>
     </header>
 
-    <main id="app">
-      <section class="card" id="launch-card">
-        <h1 id="concept-title">loading...</h1>
-        <p class="role" id="concept-role"></p>
-        <dl class="contract">
-          <dt>Core action</dt><dd id="concept-core-action"></dd>
-          <dt>Signature reveal</dt><dd id="concept-reveal"></dd>
-          <dt>Your choice</dt><dd id="concept-choice"></dd>
-          <dt>Next hook</dt><dd id="concept-hook"></dd>
-          <dt>Target length</dt><dd id="concept-target"></dd>
-        </dl>
-        <p class="hint" id="shell-hint">
-          This is the blank shared shell. Candidate content arrives in later tasks.
-          Use the controls below to walk the required beat structure.
-        </p>
-      </section>
-
-      <section class="card">
-        <h2>Scenario beats</h2>
-        <ol class="beats" id="beats"></ol>
-        <div class="progress"><div id="progress-fill"></div></div>
-        <p class="status" id="status">Press <kbd>Enter</kbd> to start the session.</p>
-      </section>
-
-      <section class="card">
-        <h2>Controls</h2>
-        <ul class="controls" id="controls"></ul>
-      </section>
-
-      <section class="card">
-        <h2>Session telemetry <span class="mono" id="event-count">(0 events)</span></h2>
-        <pre class="log" id="log">no events yet</pre>
-        <div class="actions">
-          <button id="export-btn" type="button">Export session JSON</button>
-          <button id="reset-btn" type="button">Reset profile (R)</button>
+    <main id="game-container">
+      <div id="canvas-wrapper">
+        <canvas id="game-canvas" width="880" height="520"></canvas>
+        <div id="canvas-overlay">
+          <div id="action-prompt" class="pulse-prompt">PRESS SPACE OR CLICK CANVAS TO CLEAN</div>
         </div>
-        <p class="validation" id="validation"></p>
-      </section>
+      </div>
+
+      <aside id="sidebar">
+        <div class="card">
+          <h3>CURRENT OBJECTIVE</h3>
+          <p id="status">Loading scenario...</p>
+        </div>
+        <div class="card">
+          <h3>CONTROLS</h3>
+          <ul class="key-list">
+            <li><kbd>Space</kbd> / <kbd>Mouse Drag</kbd> : Strip & Scrape Gold Coating</li>
+            <li><kbd>E</kbd> : Inspect Objective / Secret Safe</li>
+            <li><kbd>Q</kbd> : Signature Reveal (Expose Decayed Substrate)</li>
+            <li><kbd>F</kbd> : Commit Evidence Disposition</li>
+            <li><kbd>R</kbd> : Reset Scenario Profile</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>DISCOVERED EVIDENCE</h3>
+          <ul id="evidence-list">
+            <li class="empty-clue">No evidence collected yet.</li>
+          </ul>
+        </div>
+      </aside>
     </main>
 
-    <script type="module" src="/shell.js"></script>
+    <div style="display:none;">
+      <span id="build-id"></span>
+      <span id="session-id"></span>
+    </div>
+
+    <script type="module" src="./shell.js"></script>
   </body>
 </html>
