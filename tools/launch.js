@@ -75,6 +75,13 @@ function safeTarget(baseDir, relPath) {
   } catch {
     return null;
   }
+
+  // Reject traversal before normalization. normalize('/../x') collapses to
+  // '/x', which is still inside baseDir; accepting that would hide an escape
+  // attempt instead of explicitly rejecting it.
+  const segments = decoded.replaceAll('\\', '/').split('/');
+  if (segments.some((segment) => segment === '..')) return null;
+
   const withLeadingSlash = decoded.startsWith('/') ? decoded : `/${decoded}`;
   const target = resolve(baseDir, `.${normalize(withLeadingSlash)}`);
   if (target === baseDir || target.startsWith(`${baseDir}${sep}`)) return target;
