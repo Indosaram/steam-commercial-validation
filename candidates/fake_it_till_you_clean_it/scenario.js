@@ -53,6 +53,71 @@ export default {
     final_state: SET.archived,
   },
 
+  /**
+   * Presentation-only contract consumed by shell/canvas-renderer.js. These
+   * values never bypass the shared scenario gate: they only describe how the
+   * already-authored step should look and when a mouse brush may request the
+   * same core_action that Space requests.
+   */
+  visual_contract: {
+    renderer: 'canvas2d.fake_it.polish.v1',
+    stages: {
+      collect_debris: {
+        scene: 'gold_pool',
+        target: 'floating_debris',
+        interaction: 'drag_collect',
+        brush_radius_px: 34,
+        completion_threshold: 0.78,
+      },
+      drain_pool: {
+        scene: 'gold_pool',
+        target: 'pool_water',
+        interaction: 'activate_pump',
+        transition_ms: 1200,
+      },
+      strip_basin: {
+        scene: 'gold_pool',
+        target: 'pool_basin_gold',
+        interaction: 'drag_peel',
+        brush_radius_px: 32,
+        completion_threshold: 0.52,
+        particle: 'gold_flake',
+      },
+      strip_deck: {
+        scene: 'gold_pool',
+        target: 'courtyard_deck_gold',
+        interaction: 'drag_peel',
+        brush_radius_px: 28,
+        completion_threshold: 0.44,
+        particle: 'gold_flake',
+      },
+      reveal_decayed_surface: {
+        scene: 'gold_pool',
+        target: 'decayed_concrete',
+        interaction: 'inspect',
+        reveal_hold_ms: 950,
+      },
+      restore_glamour_vanity: {
+        scene: 'glamour_vanity',
+        target: 'vanity_surface',
+        interaction: 'drag_clean',
+        brush_radius_px: 30,
+        completion_threshold: 0.58,
+      },
+      safe_receipt_clue: {
+        scene: 'glamour_vanity',
+        target: 'concealed_safe',
+        interaction: 'inspect',
+        transition_ms: 900,
+      },
+      disposition: {
+        scene: 'glamour_vanity',
+        target: 'evidence_bundle',
+        interaction: 'choice',
+      },
+    },
+  },
+
   steps: [
     {
       id: 'inspect_objective',
