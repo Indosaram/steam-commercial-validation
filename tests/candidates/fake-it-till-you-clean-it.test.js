@@ -63,7 +63,7 @@ test('descriptor models the courtyard plus glamour vanity expansion with ordered
   const choice = descriptor.steps.find((step) => step.kind === 'choice');
   assert.deepEqual(choice.options.map((option) => option.id), ['preserve', 'discard', 'archive']);
   assert.equal(choice.default_option, 'archive');
-  assert.deepEqual(choice.requires, ['reveal_decayed_surface']);
+  assert.deepEqual(choice.requires, ['safe_receipt_clue']);
   assert.equal(choice.evidence_object, 'staging_evidence_bundle');
 
   assert.notEqual(descriptor.visible_proof.before, descriptor.visible_proof.after);
@@ -72,9 +72,15 @@ test('descriptor models the courtyard plus glamour vanity expansion with ordered
 
 test('vanity, receipt, evidence, reveal, and completion paths stay incomplete with named prerequisites', () => {
   const choiceBlocked = blockedSteps(descriptor, [
-    'inspect_objective', 'collect_debris', 'drain_pool', 'strip_basin', 'strip_deck',
+    'inspect_objective',
+    'collect_debris',
+    'drain_pool',
+    'strip_basin',
+    'strip_deck',
+    'reveal_decayed_surface',
+    'restore_glamour_vanity',
   ]).find((step) => step.id === 'disposition');
-  assert.deepEqual(choiceBlocked?.missing, ['reveal_decayed_surface']);
+  assert.deepEqual(choiceBlocked?.missing, ['safe_receipt_clue']);
 
   const receiptBlocked = blockedSteps(descriptor, [
     'inspect_objective',
@@ -115,7 +121,7 @@ test('deterministic replay exports a valid 10-15 minute expanded session and rec
 
   const recovery = replay({ seed: 31, order: ['disposition', ...descriptor.replay] });
   assert.equal(recovery.blocked[0].attempted, 'disposition');
-  assert.deepEqual(recovery.blocked[0].missing, ['reveal_decayed_surface']);
+  assert.deepEqual(recovery.blocked[0].missing, ['safe_receipt_clue']);
   assert.equal(validateSession(recovery.events).ok, true);
   assert.equal(recovery.outstanding_steps.length, 0);
 });
