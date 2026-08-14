@@ -70,6 +70,46 @@ test('descriptor models the courtyard plus glamour vanity expansion with ordered
   assert.match(descriptor.next_hook.detail, /wardrobe studio|not reachable/i);
 });
 
+test('Canvas visual choreography is data-bound to the same ordered scenario steps', () => {
+  const visual = descriptor.visual_contract;
+  assert.equal(visual.renderer, 'canvas2d.fake_it.polish.v1');
+
+  const basin = visual.stages.strip_basin;
+  const deck = visual.stages.strip_deck;
+  const drain = visual.stages.drain_pool;
+  const vanity = visual.stages.restore_glamour_vanity;
+  const safe = visual.stages.safe_receipt_clue;
+
+  assert.equal(basin.scene, 'gold_pool');
+  assert.equal(basin.interaction, 'drag_peel');
+  assert.equal(basin.target, 'pool_basin_gold');
+  assert.ok(basin.brush_radius_px >= 24);
+  assert.ok(basin.completion_threshold > 0 && basin.completion_threshold < 1);
+
+  assert.equal(deck.scene, 'gold_pool');
+  assert.equal(deck.interaction, 'drag_peel');
+  assert.ok(deck.completion_threshold > 0 && deck.completion_threshold < 1);
+  assert.notEqual(deck.target, basin.target);
+
+  assert.equal(drain.interaction, 'activate_pump');
+  assert.ok(drain.transition_ms >= 500);
+
+  assert.equal(vanity.scene, 'glamour_vanity');
+  assert.equal(vanity.interaction, 'drag_clean');
+  assert.equal(vanity.target, 'vanity_surface');
+  assert.ok(vanity.completion_threshold > 0 && vanity.completion_threshold < 1);
+
+  assert.equal(safe.scene, 'glamour_vanity');
+  assert.equal(safe.target, 'concealed_safe');
+  assert.equal(safe.interaction, 'inspect');
+  assert.ok(safe.transition_ms >= 500);
+
+  for (const stepId of ['collect_debris', 'drain_pool', 'strip_basin', 'strip_deck', 'reveal_decayed_surface', 'restore_glamour_vanity', 'safe_receipt_clue', 'disposition']) {
+    assert.ok(visual.stages[stepId], `${stepId} needs Canvas choreography metadata`);
+    assert.ok(descriptor.steps.some((step) => step.id === stepId), `${stepId} visual metadata must map to a real scenario step`);
+  }
+});
+
 test('vanity, receipt, evidence, reveal, and completion paths stay incomplete with named prerequisites', () => {
   const choiceBlocked = blockedSteps(descriptor, [
     'inspect_objective',
