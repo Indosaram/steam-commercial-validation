@@ -1,29 +1,22 @@
 #!/usr/bin/env node
 /**
- * Local launcher for the blank candidate shell.
+ * Local launcher for the modular candidate shell.
  *
- * Serves the shell as a real browser app on localhost using only the Node
- * standard library - no bundler, no package installs, no network fetch. This
- * is the "launch contract" every candidate build inherits:
- *
- *   node tools/launch.js --concept <concept_id> [--port <n>]
- *
- * A launch without --concept is rejected, which is the acceptance criterion
- * for missing concept_id at the launch boundary.
- *
- * This is an internal validation harness. It is not a Steam build, has no
- * store integration, and must never be published.
+ * Serves shared shell/core modules plus ONLY the active candidate directory.
+ * Candidate browser code is optional: candidates/<concept_id>/game.js is
+ * exposed as /candidate/game.js and announced in bootstrap.json when present.
  */
 
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, dirname, resolve, normalize } from 'node:path';
+import { statSync } from 'node:fs';
+import { extname, join, dirname, resolve, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { CONCEPT_IDS, getConcept, CONCEPTS } from '../core/concepts.js';
 import { INPUT_MAP } from '../core/input.js';
 import { schemaDescriptor } from '../core/telemetry.js';
-import { buildIdentity } from '../core/build-identity.js';
+import { buildIdentity, candidateDir } from '../core/build-identity.js';
 import { loadCandidateScenario } from '../core/candidate.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -37,6 +30,10 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
 };
 
 const HELP = `steam-commercial-validation launcher
@@ -53,14 +50,35 @@ const HELP = `steam-commercial-validation launcher
 function parseArgs(argv) {
   const args = { concept: null, port: 8177, host: '127.0.0.1', help: false };
   for (let i = 2; i < argv.length; i += 1) {
-    const a = argv[i];
-    if (a === '--help' || a === '-h') args.help = true;
-    else if (a === '--concept') args.concept = argv[++i] ?? null;
-    else if (a === '--port') args.port = Number(argv[++i]);
-    else if (a === '--host') args.host = argv[++i];
-    else throw new Error(`unknown argument: ${a}`);
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') args.help = true;
+    else if (arg === '--concept') args.concept = argv[++i] ?? null;
+    else if (arg === '--port') args.port = Number(argv[++i]);
+    else if (arg === '--host') args.host = argv[++i];
+    else throw new Error(`unknown argument: ${arg}`);
   }
   return args;
+}
+
+function isRegularFile(path) {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function safeTarget(baseDir, relPath) {
+  let decoded;
+  try {
+    decoded = decodeURIComponent(relPath);
+  } catch {
+    return null;
+  }
+  const withLeadingSlash = decoded.startsWith('/') ? decoded : `/${decoded}`;
+  const target = resolve(baseDir, `.${normalize(withLeadingSlash)}`);
+  if (target === baseDir || target.startsWith(`${baseDir}${sep}`)) return target;
+  return null;
 }
 
 async function main() {
@@ -77,13 +95,11 @@ async function main() {
     process.exit(0);
   }
 
-  // Launch contract: a missing or unknown concept_id is a hard, named failure.
   if (!args.concept) {
-    process.stderr.write(
-      `launch rejected: missing required --concept <concept_id>\n\n${HELP}`,
-    );
+    process.stderr.write(`launch rejected: missing required --concept <concept_id>\n\n${HELP}`);
     process.exit(2);
   }
+
   let concept;
   try {
     concept = getConcept(args.concept);
@@ -104,6 +120,10 @@ async function main() {
     process.stderr.write(`launch rejected: ${err.message}\n`);
     process.exit(2);
   }
+
+  const activeCandidateDir = candidateDir(concept.concept_id);
+  const candidateGameFile = join(activeCandidateDir, 'game.js');
+  const gameModule = isRegularFile(candidateGameFile) ? '/candidate/game.js' : null;
   const scenarioSource = scenario ? 'candidate' : 'blank_shell';
   const identity = buildIdentity(concept.concept_id);
   const bootstrap = {
@@ -114,6 +134,7 @@ async function main() {
     telemetry_schema: schemaDescriptor(),
     scenario,
     scenario_source: scenarioSource,
+    game_module: gameModule,
   };
 
   const server = createServer(async (req, res) => {
@@ -127,30 +148,35 @@ async function main() {
 
     if (url.pathname === '/healthz') {
       res.writeHead(200, { 'content-type': MIME['.json'] });
-      res.end(
-        JSON.stringify({
-          ok: true,
-          concept_id: concept.concept_id,
-          build_id: identity.build_id,
-          build_hash: identity.build_hash,
-          scenario_source: scenarioSource,
-          scenario_steps: scenario?.steps.length ?? 0,
-        }),
-      );
+      res.end(JSON.stringify({
+        ok: true,
+        concept_id: concept.concept_id,
+        build_id: identity.build_id,
+        build_hash: identity.build_hash,
+        scenario_source: scenarioSource,
+        scenario_steps: scenario?.steps.length ?? 0,
+        game_module: gameModule,
+      }));
       return;
     }
 
     const rel = url.pathname === '/' ? '/index.html' : url.pathname;
-    // The shell imports the shared core modules directly, so both directories
-    // are served. Everything else on disk stays unreachable.
     const isCore = rel.startsWith('/core/');
-    const baseDir = isCore ? CORE_DIR : SHELL_DIR;
-    const relPath = isCore ? rel.slice('/core'.length) : rel;
+    const isCandidate = rel.startsWith('/candidate/');
 
-    // Contain path traversal: resolve, then verify the result stays in baseDir.
-    const target = resolve(join(baseDir, normalize(relPath)));
-    if (target !== baseDir && !target.startsWith(baseDir + '/')) {
-      res.writeHead(403, { 'content-type': 'text/plain' });
+    let baseDir = SHELL_DIR;
+    let relPath = rel;
+    if (isCore) {
+      baseDir = CORE_DIR;
+      relPath = rel.slice('/core'.length);
+    } else if (isCandidate) {
+      baseDir = activeCandidateDir;
+      relPath = rel.slice('/candidate'.length);
+    }
+
+    const target = safeTarget(baseDir, relPath);
+    if (!target) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
       res.end('forbidden');
       return;
     }
@@ -160,7 +186,7 @@ async function main() {
       res.writeHead(200, { 'content-type': MIME[extname(target)] ?? 'application/octet-stream' });
       res.end(body);
     } catch {
-      res.writeHead(404, { 'content-type': 'text/plain' });
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       res.end('not found');
     }
   });
@@ -171,26 +197,23 @@ async function main() {
   });
 
   server.listen(args.port, args.host, () => {
-    process.stdout.write(
-      [
-        `concept_id : ${concept.concept_id}`,
-        `title      : ${concept.title}`,
-        `role       : ${concept.role}`,
-        `build_id   : ${identity.build_id}`,
-        `scenario   : ${scenario ? `candidate (${scenario.steps.length} steps)` : 'blank shell'}`,
-        `url        : http://${args.host}:${args.port}/`,
-        '',
-        'Internal validation shell. Not a public demo. Ctrl-C to stop.',
-        '',
-      ].join('\n'),
-    );
+    process.stdout.write([
+      `concept_id : ${concept.concept_id}`,
+      `title      : ${concept.title}`,
+      `role       : ${concept.role}`,
+      `build_id   : ${identity.build_id}`,
+      `scenario   : ${scenario ? `candidate (${scenario.steps.length} steps)` : 'blank shell'}`,
+      `game       : ${gameModule ?? 'neutral blank-shell fallback'}`,
+      `url        : http://${args.host}:${args.port}/`,
+      '',
+      'Internal validation shell. Not a public demo. Ctrl-C to stop.',
+      '',
+    ].join('\n'));
   });
 
-  // Clean shutdown so a mid-operation interrupt never leaves a bound port.
   const shutdown = (signal) => {
     process.stdout.write(`\nreceived ${signal}, shutting down cleanly\n`);
     server.close(() => process.exit(0));
-    // Force-exit if sockets linger past a grace period.
     setTimeout(() => process.exit(0), 2000).unref();
   };
   process.on('SIGINT', () => shutdown('SIGINT'));
