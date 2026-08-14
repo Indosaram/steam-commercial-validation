@@ -1,17 +1,11 @@
 /**
- * Candidate-specific contract tests for FAKE IT TILL YOU CLEAN IT (Task 2).
+ * Candidate-specific contract tests for FAKE IT TILL YOU CLEAN IT.
  *
- * These assert the descriptor's OWN guarantees on top of the shared contract:
- * one set, an inspect objective, a debris collection step, three ordered
- * cleaning passes, a reveal carrying the staged-success clue, an evidence
- * disposition gated behind that reveal, and a next-room hook.
- *
- * They also assert the two deliberate invalid paths produce named blocked
- * requirements rather than a silent soft-lock.
- *
- * Only machine-consumed values are asserted: step ids, kinds, prerequisite
- * edges, transformation keys, and blockedSteps() output. Prose (labels,
- * descriptions, consequence text) is deliberately NOT pinned.
+ * These assert the descriptor's own guarantees on top of the shared contract:
+ * one composite estate set, an inspect objective, debris collection, the three
+ * original ordered courtyard cleaning passes, the pool reveal, a second-area
+ * glamour vanity restoration, a hidden-safe receipt clue, evidence disposition,
+ * and a next-zone hook.
  */
 
 import test from 'node:test';
@@ -43,10 +37,14 @@ test('the candidate imports no other candidate (isolation)', () => {
 
 // -------------------------------------------------------- scenario shape
 
-test('the scenario declares exactly one gold pool/courtyard set', () => {
+test('the scenario declares the gold pool/courtyard set with a glamour vanity second area', () => {
   assert.equal(typeof descriptor.set, 'object');
   assert.equal(descriptor.set.id, 'gold_pool_courtyard');
   assert.notEqual(descriptor.set.initial_state, descriptor.set.final_state);
+  assert.deepEqual(descriptor.set.areas.map((area) => area.id), [
+    'gold_pool_courtyard',
+    'glamour_vanity',
+  ]);
 });
 
 test('an inspect objective opens the scenario', () => {
@@ -67,14 +65,35 @@ test('three ordered cleaning/restoration passes follow debris collection', () =>
     .filter((s) => Number.isInteger(s.cleaning_pass))
     .sort((a, b) => a.cleaning_pass - b.cleaning_pass);
 
-  assert.equal(passes.length, 3, 'exactly three cleaning passes are required');
+  assert.equal(passes.length, 3, 'the original courtyard contract keeps exactly three cleaning passes');
   assert.deepEqual(passes.map((s) => s.cleaning_pass), [1, 2, 3]);
+  assert.deepEqual(passes.map((s) => s.id), ['drain_pool', 'strip_basin', 'strip_deck']);
   for (const p of passes) assert.equal(p.kind, 'core_action');
 
-  // Each pass depends on the previous one: the order is enforced, not implied.
   assert.deepEqual(passes[0].requires, ['collect_debris']);
   assert.deepEqual(passes[1].requires, [passes[0].id]);
   assert.deepEqual(passes[2].requires, [passes[1].id]);
+
+  const vanity = stepById('restore_glamour_vanity');
+  assert.equal(vanity.cleaning_pass, undefined, 'the second-area restoration must not renumber the three courtyard passes');
+  assert.equal(vanity.restoration_extension, 1);
+});
+
+test('the glamour vanity restoration and safe receipt clue are ordered and transformed', () => {
+  const vanity = stepById('restore_glamour_vanity');
+  const receipt = stepById('safe_receipt_clue');
+
+  assert.equal(vanity.kind, 'core_action');
+  assert.equal(vanity.area_id, 'glamour_vanity');
+  assert.deepEqual(vanity.requires, ['reveal_decayed_surface']);
+  assert.notEqual(vanity.transformation.before, vanity.transformation.after);
+
+  assert.equal(receipt.kind, 'inspect');
+  assert.equal(receipt.area_id, 'glamour_vanity');
+  assert.deepEqual(receipt.requires, ['restore_glamour_vanity']);
+  assert.equal(receipt.transformation.before, vanity.transformation.after);
+  assert.notEqual(receipt.transformation.before, receipt.transformation.after);
+  assert.equal(receipt.evidence_clue.id, 'safe_receipt_clue');
 });
 
 test('every step carries a label and a visible before/after transformation', () => {
@@ -92,13 +111,13 @@ test('every step carries a label and a visible before/after transformation', () 
   }
 });
 
-test('the physical set state chains unbroken from staged gold to decay', () => {
-  // The opening inspect changes what the CONTRACTOR knows, not what the set
-  // looks like, so it is not part of the physical chain. Every step that does
-  // alter the set must start from the state the previous one left behind.
+test('the physical set state chains unbroken from staged gold through the safe receipt to archive', () => {
+  // inspect_objective changes contractor knowledge rather than the physical set.
+  // safe_receipt_clue, however, opens the safe and therefore participates in
+  // the authored physical transformation chain despite being an inspect step.
   const setSteps = descriptor.replay
     .map((id) => stepById(id))
-    .filter((s) => s.kind !== 'inspect');
+    .filter((s) => s.id !== 'inspect_objective');
 
   assert.equal(
     setSteps[0].transformation.before,
@@ -123,14 +142,18 @@ test('the physical set state chains unbroken from staged gold to decay', () => {
 
 test('the reveal exposes the decayed surface and a staged-success clue', () => {
   const reveal = stepById('reveal_decayed_surface');
+  const vanity = stepById('restore_glamour_vanity');
   assert.equal(reveal.kind, 'reveal');
   assert.equal(kinds().filter((k) => k === 'reveal').length, 1);
-  assert.equal(reveal.transformation.after, descriptor.visible_proof.after);
+  assert.match(reveal.transformation.after, /decay_exposed/);
+  assert.equal(vanity.transformation.before, reveal.transformation.after);
   assert.ok(reveal.staged_success_clue, 'the reveal must carry the staged-success clue');
   assert.equal(typeof reveal.staged_success_clue.id, 'string');
   assert.equal(typeof reveal.staged_success_clue.proves, 'string');
-  // The reveal may only fire after the last cleaning pass.
   assert.deepEqual(reveal.requires, ['strip_deck']);
+
+  // visible_proof now spans the expanded two-area route through safe discovery.
+  assert.equal(descriptor.visible_proof.after, stepById('safe_receipt_clue').transformation.after);
 });
 
 test('the evidence choice offers exactly preserve, discard, and archive', () => {
@@ -143,20 +166,20 @@ test('the evidence choice offers exactly preserve, discard, and archive', () => 
     assert.notEqual(o.consequence.trim(), '');
   }
   assert.ok(choice.options.some((o) => o.id === choice.default_option));
-  // The choice acts on the object the reveal uncovered.
-  assert.equal(choice.evidence_object, stepById('reveal_decayed_surface').staged_success_clue.id);
+  assert.deepEqual(choice.requires, ['safe_receipt_clue']);
+  assert.equal(choice.evidence_object, 'staging_evidence_bundle');
 });
 
-test('the visible proof contrasts the staged gold set with the decayed surface', () => {
+test('the visible proof contrasts the staged gold set with the final evidence-exposed state', () => {
   assert.equal(descriptor.visible_proof.before, descriptor.set.initial_state);
+  assert.equal(descriptor.visible_proof.after, stepById('safe_receipt_clue').transformation.after);
   assert.notEqual(descriptor.visible_proof.before, descriptor.visible_proof.after);
 });
 
-test('a next-room hook is declared without building a second room', () => {
+test('a next-zone hook is declared without building the third zone', () => {
   assert.equal(typeof descriptor.next_hook.label, 'string');
-  // The hook is data only: no extra room appears as a playable step.
-  const roomSteps = descriptor.steps.filter((s) => /guest_wing|second_room/.test(s.id));
-  assert.equal(roomSteps.length, 0, 'the hook must not add a second playable room');
+  const futureZoneSteps = descriptor.steps.filter((s) => /wardrobe_studio|third_zone/.test(s.id));
+  assert.equal(futureZoneSteps.length, 0, 'the hook must not add the third playable zone');
 });
 
 // ------------------------------------------------------- invalid paths
@@ -180,13 +203,23 @@ test('replay order never runs a step before its prerequisites', () => {
   }
 });
 
-test('evidence disposition before the reveal is blocked by name', () => {
-  const path = descriptor.invalid_paths.find((p) => p.id === 'disposition_before_reveal');
+test('evidence disposition before the safe receipt is blocked by name', () => {
+  const path = descriptor.invalid_paths.find((p) => p.id === 'disposition_before_safe_receipt');
+  assert.ok(path, 'expanded scenario must declare the disposition-before-receipt invalid path');
   const blocked = blockedSteps(descriptor, path.completed).find((b) => b.id === path.attempt);
-  assert.ok(blocked, 'dispositioning evidence before the reveal must be blocked');
+  assert.ok(blocked, 'dispositioning evidence before the safe receipt must be blocked');
   assert.deepEqual(blocked.missing, path.expect_missing);
+  assert.deepEqual(path.expect_missing, ['safe_receipt_clue']);
   assert.equal(typeof path.requirement, 'string');
   assert.notEqual(path.requirement.trim(), '');
+});
+
+test('safe receipt discovery before vanity restoration is blocked by name', () => {
+  const path = descriptor.invalid_paths.find((p) => p.id === 'safe_receipt_before_vanity_cleanup');
+  assert.ok(path);
+  const blocked = blockedSteps(descriptor, path.completed).find((b) => b.id === path.attempt);
+  assert.ok(blocked);
+  assert.deepEqual(blocked.missing, ['restore_glamour_vanity']);
 });
 
 test('exiting with debris remaining is blocked by name', () => {
@@ -195,7 +228,6 @@ test('exiting with debris remaining is blocked by name', () => {
   assert.ok(blocked, 'the reveal must be blocked while cleaning passes remain');
   assert.deepEqual(blocked.missing, path.expect_missing);
 
-  // ...and the scenario cannot be completed in that state: steps remain.
   const remaining = descriptor.steps.filter((s) => !path.completed.includes(s.id));
   assert.ok(remaining.length > 0, 'incomplete cleaning must leave steps outstanding');
 });
@@ -217,7 +249,7 @@ test('the step kinds cover every required shared event', () => {
     assert.ok(events.has(required), `no step produces ${required}`);
   }
   assert.ok(
-    kinds().filter((k) => k === 'core_action').length >= 4,
-    'debris collection plus three cleaning passes means at least four core actions',
+    kinds().filter((k) => k === 'core_action').length >= 5,
+    'debris plus three courtyard passes plus the glamour vanity restoration means at least five core actions',
   );
 });
