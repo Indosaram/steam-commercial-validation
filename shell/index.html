@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Concept Validation Shell</title>
+    <link rel="stylesheet" href="/shell.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar-left">
+        <span class="tag">INTERNAL VALIDATION BUILD - NOT A PUBLIC DEMO</span>
+      </div>
+      <div class="bar-right">
+        <span id="build-id" class="mono"></span>
+      </div>
+    </header>
+
+    <main id="app">
+      <section class="card" id="launch-card">
+        <h1 id="concept-title">loading...</h1>
+        <p class="role" id="concept-role"></p>
+        <dl class="contract">
+          <dt>Core action</dt><dd id="concept-core-action"></dd>
+          <dt>Signature reveal</dt><dd id="concept-reveal"></dd>
+          <dt>Your choice</dt><dd id="concept-choice"></dd>
+          <dt>Next hook</dt><dd id="concept-hook"></dd>
+          <dt>Target length</dt><dd id="concept-target"></dd>
+        </dl>
+        <p class="hint" id="shell-hint">
+          This is the blank shared shell. Candidate content arrives in later tasks.
+          Use the controls below to walk the required beat structure.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Scenario beats</h2>
+        <ol class="beats" id="beats"></ol>
+        <div class="progress"><div id="progress-fill"></div></div>
+        <p class="status" id="status">Press <kbd>Enter</kbd> to start the session.</p>
+      </section>
+
+      <section class="card">
+        <h2>Controls</h2>
+        <ul class="controls" id="controls"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Session telemetry <span class="mono" id="event-count">(0 events)</span></h2>
+        <pre class="log" id="log">no events yet</pre>
+        <div class="actions">
+          <button id="export-btn" type="button">Export session JSON</button>
+          <button id="reset-btn" type="button">Reset profile (R)</button>
+        </div>
+        <p class="validation" id="validation"></p>
+      </section>
+    </main>
+
+    <script type="module" src="/shell.js"></script>
+  </body>
+</html>

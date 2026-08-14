@@ -1,0 +1,16 @@
+{
+  "name": "steam-commercial-validation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Internal, non-public validation workspace: shared playable-demo foundation for five concept candidates. Not a Steam build, not a public demo.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "smoke": "node tools/smoke-driver.js",
+    "launch": "node tools/launch.js",
+    "validate": "node tools/validate-export.js"
+  }
+}
