@@ -181,14 +181,15 @@ function runCandidateStep(requestedKind = null, explicitStepId = null) {
 
   if (!targetStep) return;
 
-  const blocked = blockedSteps(scenario, state.completedSteps);
-  if (blocked.has(targetStep.id)) {
+  const blockedList = blockedSteps(scenario, state.completedSteps);
+  const isBlocked = blockedList.find(b => b.id === targetStep.id);
+  if (isBlocked) {
     emit('invalid_action_blocked', {
       attempted: targetStep.id,
       reason: 'prerequisites_not_met',
-      missing: targetStep.requires.filter(r => !state.completedSteps.includes(r)),
+      missing: isBlocked.missing,
     });
-    setStatus(`Blocked ${targetStep.id}: missing prerequisites.`);
+    setStatus(`Blocked ${targetStep.label || targetStep.id}: missing prerequisites.`);
     return;
   }
 
