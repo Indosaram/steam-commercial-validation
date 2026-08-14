@@ -277,18 +277,36 @@ async function boot() {
   el('concept-title').textContent = bootstrap.concept.title;
   el('build-id').textContent = BUILD_ID;
 
+
   window.addEventListener('keydown', (ev) => {
-    if (ev.code === 'Space') { ev.preventDefault(); coreAction(); }
-    else if (ev.code === 'KeyE') { ev.preventDefault(); runCandidateStep('inspect'); }
-    else if (ev.code === 'KeyQ') { ev.preventDefault(); signatureReveal(); }
-    else if (ev.code === 'KeyF') { ev.preventDefault(); commitChoice(); }
-    else if (ev.code === 'Enter') { ev.preventDefault(); advance(); }
-    else if (ev.code === 'KeyR') {
+    if (!state.startedAt) {
+      if (ev.code === 'Enter' || ev.code === 'Space' || ev.code === 'KeyE') {
+        startSession();
+      }
+    }
+
+    if (ev.code === 'KeyE') {
+      ev.preventDefault();
+      runCandidateStep('inspect');
+    } else if (ev.code === 'Space') {
+      ev.preventDefault();
+      runCandidateStep('core_action');
+    } else if (ev.code === 'KeyQ') {
+      ev.preventDefault();
+      runCandidateStep('reveal');
+    } else if (ev.code === 'KeyF') {
+      ev.preventDefault();
+      runCandidateStep('choice');
+    } else if (ev.code === 'Enter') {
+      ev.preventDefault();
+      advance();
+    } else if (ev.code === 'KeyR') {
       ev.preventDefault();
       resetProfile(state.concept.concept_id);
       location.reload();
     }
   });
+
 
   const canvas = document.getElementById('game-canvas');
   if (canvas) {
