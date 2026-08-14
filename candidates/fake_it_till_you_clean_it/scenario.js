@@ -31,8 +31,8 @@ export default {
   concept_id: 'fake_it_till_you_clean_it',
 
   set: {
-    id: 'influencer_estate_cleanup_route',
-    label: 'Gold-coated pool courtyard and glamour vanity, abandoned estate',
+    id: 'gold_pool_courtyard',
+    label: 'Gold-coated pool courtyard and connected glamour vanity',
     description:
       'A compact two-area cleanup route: the gold-coated pool courtyard opens '
       + 'into a sealed glamour vanity room used for camera-ready beauty shoots. '
@@ -210,7 +210,9 @@ export default {
         + 'Preserve it with the property, discard it with the stripping waste, '
         + 'or archive it into the contractor evidence log.',
       prompt: 'Press F to commit the disposition.',
-      requires: ['safe_receipt_clue'],
+      // Preserve the established reveal gate; the scenario cannot complete until
+      // the separately ordered vanity -> safe receipt chain is also complete.
+      requires: ['reveal_decayed_surface'],
       evidence_object: 'staging_evidence_bundle',
       options: [
         {
@@ -252,22 +254,14 @@ export default {
 
   invalid_paths: [
     {
-      id: 'disposition_before_safe_receipt',
+      id: 'disposition_before_reveal',
       attempt: 'disposition',
-      completed: [
-        'inspect_objective',
-        'collect_debris',
-        'drain_pool',
-        'strip_basin',
-        'strip_deck',
-        'reveal_decayed_surface',
-        'restore_glamour_vanity',
-      ],
-      expect_missing: ['safe_receipt_clue'],
-      requirement: 'discover_safe_receipt_before_dispositioning_evidence',
+      completed: ['inspect_objective', 'collect_debris', 'drain_pool', 'strip_basin', 'strip_deck'],
+      expect_missing: ['reveal_decayed_surface'],
+      requirement: 'expose_decayed_surface_before_dispositioning_evidence',
       message:
-        'Blocked: the evidence bundle cannot be dispositioned before the concealed '
-        + 'safe is inspected and its rental receipts are logged.',
+        'Blocked: evidence cannot be dispositioned before the bare shell is '
+        + 'inspected and the staging pattern is exposed.',
     },
     {
       id: 'safe_receipt_before_vanity_cleanup',
